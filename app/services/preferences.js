@@ -8,8 +8,8 @@ export default Ember.Service.extend({
     contributors: Ember.computed.alias('preferences.contributors'),
 
     setupContributors: function () {
-        $.getJSON('contributors.json').then(
+        Ember.$.getJSON('contributors.json').then(
             (data) => this.set('preferences.contributors', data)
         );
-    }.on('init'),
+    }.on('init')
 });
