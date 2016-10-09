@@ -8,32 +8,43 @@
     <section class="view-content">
         <form id="settings-general">
             <fieldset>
+                {{#if autoUpdate.isSupportedEnvironment}}
+                    <div class="form-group for-checkbox">
+                        <label>Automatic Updates</label>
+                        {{#if autoUpdate.isCheckingForUpdate}}
+                            <p>Ghost is currently looking for updates.</p>
+                        {{else if autoUpdate.isUpdateDownloaded}}
+                            <p>An Update was downloaded and will automatically be installed the next time you start Ghost Desktop.</p>
+                            <button {{action "installUpdate"}} type="button" class="btn btn-green">Install Update Now</button>
+                        {{else if autoUpdate.isUpdateAvailable}}
+                            <p>An Update is available and is currently being downloaded.</p>
+                            <button type="button" class="btn btn-green" disabled>Install Update Now</button>
+                        {{else if autoUpdate.isLatestVersion}}
+                            <p>You're running the latest version of Ghost Desktop!</p>
+                        {{else}}
+                            <p>Ghost will periodically check for updates and automatically install new versions.</p>
+                        {{/if}}
+                        <p>You are currently running Ghost Desktop <strong>{{autoUpdate.appVersion}}</strong>.</p>
+                    </div>
+                {{/if}}
                 <div class="form-group for-checkbox">
-                    <label>Automatic Updates</label>
-                    {{#if autoUpdate.isLinux}}
-                        <p>Automatic Updates are not yet available for Linux. Stay tuned!</p>
-                    {{else if autoUpdate.isCheckingForUpdate}}
-                        <p>Ghost is currently looking for updates.</p>
-                    {{else if autoUpdate.isUpdateDownloaded}}
-                        <p>An Update was downloaded and will automatically be installed the next time you start Ghost Desktop.</p>
-                        <button {{action "installUpdate"}} type="button" class="btn btn-green">Install Update Now</button>
-                    {{else if autoUpdate.isUpdateAvailable}}
-                        <p>An Update is available and is currently being downloaded.</p>
-                        <button type="button" class="btn btn-green" disabled>Install Update Now</button>
-                    {{else if autoUpdate.isLatestVersion}}
-                        <p>You're running the latest version of Ghost Desktop!</p>
-                    {{else}}
-                        <p>Ghost will periodically check for updates and automatically install new versions.</p>
-                    {{/if}}
-                    <p>You are currently running Ghost Desktop <strong>{{autoUpdate.appVersion}}</strong>.</p>
-                </div>
-                <div class="form-group for-checkbox">
-                    <label for="isNotificationsEnabled">Enable notifications</label>
+                    <label for="isNotificationsEnabled">Enable Notifications</label>
                     <label class="checkbox" for="isNotificationsEnabled">
                         {{input id="isNotificationsEnabled" type="checkbox" checked=preferences.isNotificationsEnabled}}
                         <span class="input-toggle-component"></span>
                         <p>Enable Desktop notifications</p>
                     </label>
+                </div>
+                {{gh-dictionaries-dropdown}}
+                <div class="form-group">
+                    <label for="zoomFactor">Zoom Factor</label>
+                    <p>
+                        {{input id="zoomFactor" type="range" min="50" max="300" step="1" value=zoomFactor}}
+                        {{zoomFactor}}%
+                    </p>
+                    <button {{action "resetZoom"}} type="button" class="btn btn-green">Reset</button>
+                    <button {{action "confirmZoom"}} type="button" class="btn btn-green">Set Zoom</button>
+                    <p>Set the zoom factor for Ghost, enlarging or shrinking the interface.</p>
                 </div>
             </fieldset>
             <hr>

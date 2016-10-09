@@ -7,12 +7,12 @@ const winStateKeeper = require('electron-window-state');
  */
 
 /**
- * Builds an returns an object consisting of two objects, with the following keys:
+ * Builds and returns an object consisting of two objects, with the following keys:
  * usableState: an object describing how to layout the app window given screen real estate
  * stateKeeper: an object that keeps track of window state change events.
  */
 function fetchWindowState() {
-    const screen = electron.screen;
+    const {screen} = electron;
     const defaultWidth = 1000;
     const defaultHeight = 800;
 
@@ -24,8 +24,8 @@ function fetchWindowState() {
 
     // Get the display nearest to the window's saved position, if it exists.
     const nearestDisplay = screen.getDisplayNearestPoint({
-        x: stateKeeper.x,
-        y: stateKeeper.y
+        x: stateKeeper.x || 0,
+        y: stateKeeper.y || 0
     });
 
     // Get the usable screen area.

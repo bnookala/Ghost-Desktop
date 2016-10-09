@@ -8,10 +8,17 @@ export default Ember.Service.extend(Ember.Evented, {
     isUpdateDownloaded: null,
     isLatestVersion: null,
 
-    isLinux: Ember.computed({
+    isSupportedEnvironment: Ember.computed({
         get() {
-            return (this.get('environment') === 'production'
-                && process.platform === 'linux');
+            if (process.platform === 'linux' || process.mas) {
+                return false;
+            }
+
+            if (this.get('environment') !== 'production') {
+                return false;
+            }
+
+            return true;
         }
     }),
 
@@ -32,9 +39,28 @@ export default Ember.Service.extend(Ember.Evented, {
     appVersion: Ember.computed({
         get() {
             let {remote} = requireNode('electron');
-            let appVersion = remote.require('app').getVersion();
+            let appVersion = remote.app.getVersion();
 
             return appVersion;
+        }
+    }),
+
+    /**
+     * Returns the Update Feed URL for the current platform.
+     */
+    updateFeedUrl: Ember.computed({
+        get() {
+            let os = requireNode('os').platform();
+            let updateFeed = (os === 'darwin') ?
+                `http://desktop-updates.ghost.org/update/osx/${this.get('appVersion')}` :
+                `http://desktop-updates.ghost.org/update/win32/${this.get('appVersion')}`;
+
+            // Developer ovverride?
+            if (process.env.GHOST_UPDATER_URL) {
+                updateFeed = process.env.GHOST_UPDATER_URL;
+            }
+
+            return updateFeed;
         }
     }),
 
@@ -42,18 +68,42 @@ export default Ember.Service.extend(Ember.Evented, {
      * Checks Ghost Desktop's update server for updates.
      */
     checkForUpdates() {
-        if (this.get('environment') !== 'production' || this.get('isCheckingForUpdate')
-            || !navigator.onLine || this.get('isLinux')) {
-            return;
-        }
+        this.isOnline().then((reachable) => {
+            // Bail out if we're not able to reach the update server.
+            if (!reachable) {
+                return;
+            }
 
-        if (!this.get('autoUpdater')) {
-            this._setup();
-        }
+            // Makes sure the environment we're in is supported.
+            if (!this.get('isSupportedEnvironment')) {
+                return;
+            }
 
-        if (this.get('autoUpdater')) {
-            this.get('autoUpdater').checkForUpdates();
-        }
+            // We're already in a update check state.
+            if (this.get('isCheckingForUpdate')) {
+                return;
+            }
+
+            if (!this.get('autoUpdater')) {
+                this._setup();
+            }
+
+            if (this.get('autoUpdater')) {
+                this.get('autoUpdater').checkForUpdates();
+            }
+        });
+    },
+
+    /**
+     * Checks to see if we're online and able to reach the update server.
+     */
+    isOnline() {
+        return new Promise((resolve) => {
+            let isReachable = requireNode('is-reachable');
+            isReachable(this.get('updateFeedUrl'), (err, reachable) => {
+                resolve(reachable);
+            });
+        });
     },
 
     /**
@@ -72,20 +122,15 @@ export default Ember.Service.extend(Ember.Evented, {
      */
     _setup() {
         let {remote} = requireNode('electron');
-        let os = requireNode('os').platform();
-        let autoUpdater = remote.require('auto-updater');
+        let {autoUpdater} = remote;
 
         // If we're not running signed code, requiring auto updater will fail
         if (this.get('environment') !== 'production') {
             return;
         }
 
-        let updateFeed = (os === 'darwin') ?
-            `http://desktop-updates.ghost.org/update/osx/${this.get('appVersion')}` :
-            `http://desktop-updates.ghost.org/update/win32/${this.get('appVersion')}`;
-
         autoUpdater.removeAllListeners();
-        autoUpdater.setFeedURL(updateFeed);
+        autoUpdater.setFeedURL(this.get('updateFeedUrl'));
 
         autoUpdater.on('checking-for-update', () => {
             this.set('isCheckingForUpdate', true);

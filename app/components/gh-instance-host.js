@@ -1,10 +1,9 @@
 import Ember from 'ember';
+import ENV from 'ghost-desktop/config/environment';
 import {injectCss} from '../utils/inject-css';
 import Phrases from '../utils/phrases';
 
-const {
-    Component
-} = Ember;
+const {Component} = Ember;
 
 /**
  * The instance host component contains a webview, displaying a Ghost blog
@@ -14,6 +13,25 @@ export default Component.extend({
     classNames: ['instance-host'],
     classNameBindings: ['blog.isSelected:selected'],
     preferences: Ember.inject.service(),
+
+    /**
+     * Observes the 'isResetRequested' property, resetting the instance if
+     * it is set to true. This is our way of being able to refresh the blog
+     * if properties changed that are not part of the cleartext model (like
+     * the password, for instance)
+     */
+    blogObserver: Ember.observer('blog.isResetRequested', function() {
+        const blog = this.get('blog');
+
+        if (blog && blog.get('isResetRequested')) {
+            blog.set('isResetRequested', false);
+            blog.save();
+
+            if (this.get('isAttemptedSignin')) {
+                this.reload();
+            }
+        }
+    }),
 
     didReceiveAttrs() {
         this._super(...arguments);
@@ -27,6 +45,8 @@ export default Component.extend({
         // to handle the successful load of the content - and a
         // "new window" request coming from the instance
         this.$('webview')
+            .off('did-start-loading')
+            .on('did-start-loading', () => this._handleStartLoading())
             .off('did-finish-load')
             .on('did-finish-load', () => this._handleLoaded())
             .off('did-fail-load')
@@ -35,10 +55,14 @@ export default Component.extend({
             .on('new-window', (e) => this._handleNewWindow(e))
             .off('console-message')
             .on('console-message', (e) => this._handleConsole(e));
+    },
 
-        // Inject CSS, Update Name
-        this._insertCss();
-        this._updateName();
+    didInsertElement() {
+        this.get('preferences').on('selectedDictionaryChanged', () => this._setupSpellchecker());
+
+        if (this.get('blog.isResetRequested')) {
+            this.set('blog.isResetRequested', false);
+        }
     },
 
     /**
@@ -50,7 +74,7 @@ export default Component.extend({
         // To make things "feel" more snappy, we're hiding the loading from the
         // user.
         if (window.QUnit) {
-            return this.set('isInstanceLoaded', true);
+            return Ember.run(() => this.set('isInstanceLoaded', true));
         }
 
         Ember.run.later(() => this.set('isInstanceLoaded', true), 1500);
@@ -58,10 +82,20 @@ export default Component.extend({
     },
 
     /**
+     * A crude attempt at trying things again.
+     */
+    reload() {
+        this.set('isInstanceLoaded', false);
+        this.set('isAttemptedSignin', false);
+        this.didRender();
+
+        Ember.run.later(() => this.signin());
+    },
+
+    /**
      * Programmatically attempt to login
      */
-    signin() {
-        let $webviews = this.$('webview');
+    signin($webview = this._getWebView()) {
         let username = this.get('blog.identification');
         let password = this.get('blog').getPassword();
 
@@ -70,19 +104,21 @@ export default Component.extend({
         //
         // TODO: Ask the user for credentials and add them back to the OS
         // keystore
-        if (!username || !password || !$webviews || !$webviews[0]) {
+        if (!username || !password || !$webview) {
             return this.show();
         }
 
         let commands = [
             `$('input[name="identification"]').val('${username}');`,
+            `$('input[name="identification"]').change();`,
             `$('input[name="password"]').val('${password}');`,
+            `$('input[name="password"]').change();`,
             `$('button.login').click();`
         ];
 
         // Execute the commands. Once done, the load handler will
         // be called again, and the instance set to loaded.
-        $webviews[0].executeJavaScript(commands.join(''));
+        $webview.executeJavaScript(commands.join(''));
         this.set('isAttemptedSignin', true);
     },
 
@@ -91,25 +127,34 @@ export default Component.extend({
      *
      * CSS files can be found in /public/assets/inject/css/*
      */
-    _insertCss() {
-        let $webviews = this.$('webview');
-
-        if (!$webviews || !$webviews[0]) {
-            return;
+    _insertCss($webview = this._getWebView()) {
+        if ($webview) {
+            // Inject a CSS file for the specific platform (OS X; Windows)
+            injectCss($webview, process.platform);
+            // Inject a CSS file for all platforms (all.css)
+            injectCss($webview, 'all');
         }
+    },
 
-        // Inject a CSS file for the specific platform (OS X; Windows)
-        injectCss($webviews[0], process.platform);
-        // Inject a CSS file for all platforms (all.css)
-        injectCss($webviews[0], 'all');
+    /**
+     * The webview started loading, meaning that it moved on from being a simple
+     * HTMLElement to bloom into a beautiful webview (with all the methods we need)
+     */
+    _handleStartLoading() {
+        let $webview = this._getWebView();
+
+        this._insertCss();
+        this._updateName();
+        this._setupSpellchecker($webview);
+        this._setupWindowFocusListeners($webview);
     },
 
     /**
      * Handle's the 'did-finish-load' event on the webview hosting the Ghost blog
      */
     _handleLoaded() {
-        let $webviews = this.$('webview');
-        let title = ($webviews && $webviews[0]) ? $webviews[0].getTitle() : '';
+        let $webview = this._getWebView();
+        let title = ($webview) ? $webview.getTitle() : '';
 
         // Check if we're on the sign in page, and if so, attempt to
         // login automatically (without bothering the user)
@@ -142,7 +187,7 @@ export default Component.extend({
      * @param errorDescription {string}
      */
     _handleLoadFailure(e, errorCode, errorDescription = '') {
-        let $webviews = this.$('webview');
+        let $webview = this._getWebView();
         let path = requireNode('path');
         let errorPage = path.join(__dirname, '..', 'main', 'load-error', 'error.html');
         let validatedURL = e.originalEvent.validatedURL || '';
@@ -152,23 +197,29 @@ export default Component.extend({
             return;
         }
 
-        if ($webviews && $webviews[0]) {
-            $webviews[0].loadURL(`file://${errorPage}?error=${errorDescription}`);
-            this.set('isInstanceLoaded', true);
+        if (ENV.environment === 'test') {
+            errorPage = path.join(process.cwd(), 'main', 'load-error', 'error.html');
+        }
+
+        if ($webview) {
+            $webview.loadURL(`file://${errorPage}?error=${errorDescription}`);
+            this.show();
         }
 
         console.log(`Ghost Instance failed to load. Error Code: ${errorCode}`, errorDescription);
         // TODO: Handle notification click
         /*eslint-disable no-unused-vars*/
         if (this.get('preferences.isNotificationsEnabled')) {
-            let errorNotify = new Notification(Phrases.noInternet);
+            let errorNotify = new Notification('Ghost Desktop', {
+                body: Phrases.noInternet
+            });
         }
         /*eslint-enable no-unused-vars*/
     },
 
     /**
      * Handles console messages logged in the webview
-     * @param  {Object} e - jQuery Event
+     * @param e {Object} - jQuery Event
      */
     _handleConsole(e) {
         if (e && e.originalEvent && e.originalEvent.message.includes('login-error')) {
@@ -178,12 +229,11 @@ export default Component.extend({
             }
             /*eslint-enable no-unused-vars*/
 
-            // TODO: Show "update credentials screen here"
-            return this.set('isInstanceLoaded', true);
+            return this.sendAction('showEditBlog', this.get('blog'), Phrases.loginFailed);
         }
 
         if (e.originalEvent.message.includes('loaded')) {
-            this.set('isInstanceLoaded', true);
+            this.show();
         }
     },
 
@@ -194,5 +244,36 @@ export default Component.extend({
         if (this.get('blog')) {
             this.get('blog').updateName();
         }
+    },
+
+    /**
+     * Sends the current spellchecker language to the webview
+     */
+    _setupSpellchecker($webview = this._getWebView()) {
+        $webview.send('spellchecker', this.get('preferences.spellcheckLanguage'));
+    },
+
+    /**
+     * Ensures that Alt-Tab on Ghost Desktop windows doesn't mean that the user
+     * looses focus in the Ghost Admin editor
+     */
+    _setupWindowFocusListeners($webview = this._getWebView()) {
+        window.addEventListener('blur', () => $webview.blur());
+        window.addEventListener('focus', () => $webview.focus());
+    },
+
+    /**
+     * Looks for all webviews on the page, returning the first one
+     * @returns
+     */
+    _getWebView() {
+        let $webviews = this.$('webview');
+        let $webview = ($webviews && $webviews[0]) ? $webviews[0] : undefined;
+
+        if (!$webview) {
+            console.log(new Error('Could not find webview containing Ghost blog.'));
+        }
+
+        return $webview;
     }
 });

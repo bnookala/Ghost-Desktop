@@ -1,11 +1,10 @@
 'use strict';
 
-const electron             = require('electron');
-const fetchWindowState     = require('./window-state');
-const app                  = electron.app;
-const BrowserWindow        = electron.BrowserWindow;
-const emberAppLocation     = `file://${__dirname}/../dist/index.html`;
-
+const electron = require('electron');
+const fetchWindowState = require('./window-state');
+const app = electron.app;
+const BrowserWindow = electron.BrowserWindow;
+const emberAppLocation = `file://${__dirname}/../dist/index.html`;
 
 // Before we do anything else, handle Squirrel Events
 if (require('./squirrel')()) {
@@ -16,6 +15,7 @@ let mainWindow = null;
 
 app.on('ready', function onReady() {
     let windowState, usableState, stateKeeper;
+    let titleBarStyle = (process.platform === 'darwin') ? 'hidden' : 'default';
 
     // Greetings
     console.log('Welcome to Ghost 👻');
@@ -27,7 +27,7 @@ app.on('ready', function onReady() {
         stateKeeper = windowState.stateKeeper;
 
         mainWindow = new BrowserWindow(
-            Object.assign(usableState, {show: false})
+            Object.assign(usableState, {show: false, titleBarStyle: titleBarStyle})
         );
     } catch (error) {
         // Window state keeper failed, let's still open a window
@@ -35,7 +35,8 @@ app.on('ready', function onReady() {
         mainWindow = new BrowserWindow({
             show: false,
             height: 800,
-            width: 1000
+            width: 1000,
+            titleBarStyle: titleBarStyle
         });
     }
 
@@ -61,4 +62,8 @@ app.on('ready', function onReady() {
     mainWindow.webContents.on('will-navigate', (event) => event.preventDefault());
 
     mainWindow.on('closed', () => app.quit());
+
+    // Initialize Blog Data IPC
+    require('./blog-data');
+    require('./basic-auth');
 });

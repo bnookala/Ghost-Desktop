@@ -1,7 +1,11 @@
+{{#if isMac}}
+    {{gh-drag-region width="100%" height="16px"}}
+{{/if}}
+
 {{!-- Left "Quick Swich" Area  --}}
 
 {{#if blogs}}
-    {{gh-switcher 
+    {{gh-switcher
         blogs=blogs
         switchToBlog="switchToBlog"
         showAddBlog="showAddBlog"
@@ -13,14 +17,25 @@
 
 {{!-- Right Side: Main Content Area  --}}
 
-{{#if isEditBlogVisible}}
-    {{gh-edit-blog blogAdded="blogAdded" blog=blogToEdit}}
-{{else if isPreferencesVisible}}
-    {{gh-preferences}}
-{{/if}}
+<div class="content">
+    {{gh-find-in-webview isActive=isFindInViewActive}}
 
-{{#if blogs}}
-    {{#each blogs as |blog|}}
-        {{gh-instance-host blog=blog}}
-    {{/each}}
-{{/if}}
+    {{#if isEditBlogVisible}}
+        <div class="center-host">
+            {{gh-edit-blog
+                blogAdded="blogAdded"
+                blog=blogToEdit
+                editWarning=editWarning
+            }}
+        </div>
+    {{else if isPreferencesVisible}}
+        {{gh-preferences}}
+    {{/if}}
+
+    {{#if blogs}}
+        {{#each blogs as |blog|}}
+            {{gh-instance-host blog=blog showEditBlog="showEditBlog"}}
+        {{/each}}
+    {{/if}}
+</div>
+

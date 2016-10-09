@@ -10,6 +10,8 @@ export default Component.extend({
     store: Ember.inject.service(),
     autoUpdate: Ember.inject.service(),
     classNames: ['gh-app'],
+    isFindInViewActive: false,
+    isMac: !!(process.platform === 'darwin'),
 
     didReceiveAttrs() {
         this.setup();
@@ -213,8 +215,9 @@ export default Component.extend({
          *
          * @param blog - Blog to edit
          */
-        showEditBlog(blog) {
+        showEditBlog(blog, editWarning) {
             this.set('blogToEdit', blog);
+            this.set('editWarning', editWarning);
             this.showEditBlogUI();
         },
 

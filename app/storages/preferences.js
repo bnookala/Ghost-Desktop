@@ -5,7 +5,9 @@ const Storage = StorageObject.extend();
 Storage.reopenClass({
     initialState() {
         return {
-            isNotificationsEnabled: true
+            isNotificationsEnabled: true,
+            spellcheckLanguage: 'en',
+            isQuickSwitcherMinimized: false
         };
     }
 });

@@ -11,6 +11,15 @@
     -webkit-user-select: none;   /* Chrome/Safari/Opera */
     -ms-user-select: none;       /* IE/Edge */
     user-select: none;
+    transition: all linear .25s;
+}
+
+.switcher.mac {
+    padding-top: 25px;
+}
+
+.switcher.is-minimized {
+    width: 0;
 }
 
 .switcher-blog {
@@ -29,7 +38,7 @@
     font-weight: bold;
     background-color: var(--lightgrey);
     border-radius: 3px;
-    opacity: 0.4;
+    opacity: 0.6;
     transition: box-shadow 0.7s ease;
 }
 

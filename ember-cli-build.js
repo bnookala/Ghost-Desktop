@@ -1,9 +1,9 @@
-/*jshint node:true*/
+/* jshint node:true */
 /* global require, module */
 const EmberApp = require('ember-cli/lib/broccoli/ember-app'),
-    mythCompress = isProduction || environment === 'test',
     environment = EmberApp.env(),
-    isProduction = environment === 'production';
+    isProduction = environment === 'production',
+    mythCompress = isProduction || environment === 'test';
 
 module.exports = function(defaults) {
     const isTest = (process.env.EMBER_ENV || 'development') === 'test';
@@ -18,10 +18,19 @@ module.exports = function(defaults) {
         'es6.properties.shorthand',
         'es6.literals',
         'es6.spec.symbols',
-        'es6.spread'
+        'es6.spread',
+        'es6.parameters',
+        'es6.spec.arrowFunctions',
+        'es6.spec.templateLiterals',
+        'es6.spec.blockScoping',
+        'es6.tailCall',
+        'es6.regex.sticky',
+        'es6.regex.unicode',
+        'es6.objectSuper',
+        'es6.destructuring'
     ];
 
-    var app = new EmberApp(defaults, {
+    const app = new EmberApp(defaults, {
         babel: {
             includePolyfill: true,
             blacklist: blacklist,

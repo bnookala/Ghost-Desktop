@@ -15,6 +15,9 @@ export default DS.Model.extend({
     iconColor: attr('string', {
         defaultValue: () => getIconColor(null)
     }),
+    basicUsername: attr('string'),
+    basicPassword: attr('string'),
+    isResetRequested: attr('boolean'),
 
     /**
      * Convenience method, marking the blog as selected (and saving)
@@ -89,5 +92,31 @@ export default DS.Model.extend({
                 .then((name) => this.set('name', name))
                 .catch((e) => console.log(e));
         }
+    },
+
+    /**
+     * Delete the password while deleting the blog.
+     * Todo: DeleteRecord isn't persisted, meaning that if we ever
+     * call this and then pretend that we never meant to delete stuff,
+     * the password will still be gone.
+     */
+    deleteRecord() {
+        this._super();
+
+        let keytar = requireKeytar();
+        return (keytar ? keytar.deletePassword(this.get('url'), this.get('identification')) : null);
+    },
+
+    /**
+     * Whenever a blog is updated, we also inform the main thread
+     * - just to ensure that the thread there knows about blogs
+     * too.
+     */
+    save() {
+        const {ipcRenderer} = require('electron');
+        const serializedData = this.toJSON({includeId: true});
+
+        ipcRenderer.send('blog-serialized', serializedData);
+        return this._super(...arguments);
     }
 });

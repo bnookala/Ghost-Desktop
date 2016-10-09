@@ -9,6 +9,9 @@ const {Component} = Ember;
 export default Component.extend({
     store: Ember.inject.service(),
     classNames: ['gh-edit-blog'],
+    classNameBindings: ['isBasicAuth:basic-auth', 'hasWarning'],
+    isBasicAuth: false,
+    hasWarning: Ember.computed.bool('editWarning'),
 
     /**
      * A boolean value that is true if any errors are present
@@ -28,10 +31,15 @@ export default Component.extend({
     didReceiveAttrs() {
         if (this.get('blog')) {
             let blog = this.get('blog');
+            let isBasicAuth = (blog.get('basicUsername') || blog.get('basicPassword'));
+
             this.setProperties({
                 url: blog.get('url'),
                 identification: blog.get('identification'),
-                password: blog.getPassword()
+                password: blog.getPassword(),
+                basicUsername: blog.get('basicUsername'),
+                basicPassword: blog.get('basicPassword'),
+                isBasicAuth
             });
         }
     },
@@ -40,11 +48,12 @@ export default Component.extend({
      * Validates that the passed url is actually a Ghost login page,
      * displaying errors if it isn't.
      *
-     * @param url - Url to checl
+     * @param url - Url to check
+     * @param basicAuth - Auth object
      * @returns {Promise}
      */
-    _validateUrlIsGhost(url = '') {
-        return getIsGhost(url)
+    _validateUrlIsGhost(url = '', basicAuth) {
+        return getIsGhost(url, basicAuth)
             .then((is) => {
                 this.set('isUrlInvalid', !is);
 
@@ -54,10 +63,15 @@ export default Component.extend({
 
                 return is;
             })
-            .catch(() => {
-                // We failed to reach the page, mark it as invalid
-                this.set('isUrlInvalid', true);
-                this.set('urlError', Phrases.urlNotReachable);
+            .catch((err) => {
+                // Handle 401
+                if (err && err.status === 401) {
+                    this.set('isBasicAuth', true);
+                } else {
+                    // We failed to reach the page, mark it as invalid
+                    this.set('isUrlInvalid', true);
+                    this.set('urlError', Phrases.urlNotReachable);
+                }
             });
     },
 
@@ -92,21 +106,29 @@ export default Component.extend({
      * @param {string} [url=''] Url
      * @param {string} [name=''] Name
      * @param {string} [identification=''] Identification
+     * @param {string} [basicUsername=''] HTTP Basic Auth Username
+     * @param {string} [basicPassword=''] HTTP Basic Auth Password
      * @returns {Promise} - Resolves with a blog record
      */
-    _createBlogIfNotExists(url = '', name = '', identification = '') {
+    _createBlogIfNotExists(url = '', name = '', identification = '', basicUsername = '', basicPassword = '') {
         return new Promise(async (resolve) => {
             let record = this.get('blog') || await this._ensureSingleRecord(url);
 
             if (!record) {
                 // If the blog doesn't already exist, create it
                 record = this.get('store').createRecord('blog', {url});
+            } else {
+                // If it does exist, ensure that everybody knows this is super new
+                // This ensures we update even if only the password field was updated
+                record.set('isResetRequested', true);
             }
 
             record.setProperties({
                 url,
                 name,
-                identification
+                identification,
+                basicUsername,
+                basicPassword
             });
 
             // Set the password in an extra step, because it's a native call
@@ -127,12 +149,14 @@ export default Component.extend({
 
             let url = sanitizeUrl(this.get('url'));
             let identification = this.get('identification');
-            let isUrlGhost = await this._validateUrlIsGhost(url);
+            let basicUsername = this.get('basicUsername');
+            let basicPassword = this.get('basicPassword');
+            let isUrlGhost = await this._validateUrlIsGhost(url, {basicUsername, basicPassword});
 
             if (isUrlGhost) {
                 let name = await getBlogName(url);
 
-                this._createBlogIfNotExists(url, name, identification)
+                this._createBlogIfNotExists(url, name, identification, basicUsername, basicPassword)
                     .then((record) => this.sendAction('blogAdded', record));
             }
 

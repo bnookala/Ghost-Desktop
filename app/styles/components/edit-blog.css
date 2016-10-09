@@ -7,7 +7,6 @@
 
 .gh-edit-blog {
     position: relative;
-    margin: 30px auto;
     padding: 40px;
     max-width: 500px;
     width: 100%;
@@ -17,6 +16,10 @@
     text-align: left;
     height: 380px;
     align-self: center;
+}
+
+.gh-edit-blog.has-warning {
+    height: 420px;
 }
 
 .gh-edit-blog .form-group {
@@ -34,4 +37,17 @@
 
 .gh-edit-blog .gh-flow-content-wrap:first {
     padding-bottom: 0;
+}
+
+.gh-edit-blog.basic-auth {
+    height: 580px;
+}
+
+.basic-auth-username {
+    margin-top: 10px;
+}
+
+.gh-edit-blog .warning {
+    font-size: 0.8em;
+    color: #e25440;
 }

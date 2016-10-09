@@ -10,5 +10,7 @@
     },
     "disallowSpacesInsideObjectBrackets": "all",
     "requireCommentsToIncludeAccess": null,
-    "requireSpacesInsideObjectBrackets": null
+    "requireSpacesInsideObjectBrackets": null,
+    "disallowConstOutsideModuleScope": null,
+    "disallowDirectPropertyAccess": null
 }

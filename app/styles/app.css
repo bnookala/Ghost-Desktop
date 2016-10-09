@@ -2,8 +2,7 @@
 /* ---------------------------------------------------------- */
 @import "../../bower_components/normalize-css/normalize.css";
 
-
-/* Patterns: Groups of Styles
+/* Patterns: Groups of Patterns
 /* ---------------------------------------------------------- */
 @import "patterns/global.css";
 @import "patterns/icons.css";
@@ -12,16 +11,20 @@
 @import "patterns/labels.css";
 @import "patterns/tables.css";
 
-/* Components: Groups of Patterns
+/* Components: Groups of Components
 /* ---------------------------------------------------------- */
 @import "components/instance-host.css";
 @import "components/switcher.css";
 @import "components/splitbuttons.css";
 @import "components/edit-blog.css";
 @import "components/preferences.css";
+@import "components/app.css";
+@import "components/find-webview.css";
+@import "components/power-select.css";
+@import "components/drag-region.css";
 
 
-/* Layouts: Groups of Components
+/* Layouts: Groups of Layouts
 /* ---------------------------------------------------------- */
 @import "layouts/loading.css";
 @import "layouts/main.css";

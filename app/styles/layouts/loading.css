@@ -1,7 +1,7 @@
 /* Loading state */
 .gh-loading-side {
     position: relative;
-    flex: 0 0 235px;
+    flex: 0 0 205px;
     display: flex;
     flex-direction: column;
     min-width: 0;
@@ -17,6 +17,11 @@
     align-items: center;
     justify-content: center;
     background: #fff;
+    flex-direction: column;
+}
+
+.gh-loading-content.basic-auth {
+    z-index: 1000;
 }
 
 .gh-loading-spinner {
